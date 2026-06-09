@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 단어 마스터 모의고사 (안정성 강화 버전)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        h1 {
+            text-align: center;
+            color: #0f172a;
+            margin-bottom: 5px;
+            font-size: 28px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 25px;
+            font-size: 15px;
+        }
+        .setup-box {
+            background: #f1f5f9;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            font-weight: bold;
+        }
+        select, .btn-start {
+            padding: 8px 16px;
+            font-size: 15px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+        }
+        .btn-start {
+            background: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-start:hover { background: #1d4ed8; }
+        
+        .question-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .question-text {
+            font-weight: 700;
+            font-size: 17px;
+            margin-bottom: 15px;
+            color: #1e293b;
+        }
+        .question-type {
+            display: inline-block;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .type-grammar { background: #dbeafe; color: #1e40af; }
+        .type-meaning { background: #fef3c7; color: #92400e; }
+
+        .options {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .option-label {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 15px;
+        }
+        .option-label:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+        .option-label input {
+            margin-right: 12px;
+            transform: scale(1.1);
+        }
+        .result-box {
+            margin-top: 15px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .result-box.correct { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .result-box.incorrect { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        
+        .action-area { text-align: center; margin-top: 30px; }
+        .btn-submit {
+            background-color: #059669;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(5, 150, 105, 0.2);
+            display: none;
+        }
+        .btn-submit:hover { background-color: #047857; }
+        .score-display {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            color: #0f172a;
+            margin-top: 25px;
+            display: none;
+            padding: 20px;
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📚 PDF 단어 전체 마스터 무작위 모의고사</h1>
+    <div class="subtitle">오답 추출 알고리즘 수정 완료 및 [원문 오류 표기 → 올바른 뜻] 반영본</div>
+
+    <div class="setup-box" id="setupBox">
+        <label for="quizCount">출제할 문항 수 선택:</label>
+        <select id="quizCount">
+            <option value="10">10 문제 테스트</option>
+            <option value="20">20 문제 테스트</option>
+            <option value="30">30 문제 테스트</option>
+            <option value="50">50 문제 테스트</option>
+            <option value="all">전체 문제 학습하기</option>
+        </select>
+        <button class="btn-start" onclick="initQuiz()">시험 시작하기</button>
+    </div>
+
+    <form id="quizForm">
+        <div id="quizContainer"></div>
+        <div class="action-area">
+            <button type="button" id="submitBtn" class="btn-submit" onclick="submitQuiz()">정답 제출 및 채점하기</button>
+        </div>
+    </form>
+
+    <div id="scoreDisplay" class="score-display"></div>
+</div>
+
+<script>
+// 데이터 세트 백업 및 정리
+const wordDatabase = {
+    gerund: [
+        {w:"mind", t:"언짢아하다, 꺼려하다"}, {w:"risk", t:"위험을 무릅쓰다"}, {w:"recommend", t:"추천하다"},
+        {w:"resist", t:"참다, 저항하다"}, {w:"tolerate", t:"용인하다, 참다"}, {w:"appreciate", t:"인정하다, 감사하다"},
+        {w:"avoid", t:"회피하다"}, {w:"anticipate", t:"기대하다, 예상하다"}, 
+        {w:"conceder", t:"[원문 오타: conceder] → 고려하다(consider)"},
+        {w:"dread", t:"두려워하다"}, {w:"dislike", t:"싫어하다"}, {w:"evade", t:"회피하다"},
+        {w:"enjoy", t:"즐기다"}, {w:"imagine", t:"상상하다"}, {w:"involve", t:"수반하다, 포함하다"},
+        {w:"justify", t:"정당화하다"}, {w:"keep", t:"계속하다"}, {w:"practice", t:"연습하다"},
+        {w:"prohibit", t:"금지하다"}, {w:"postpone", t:"연기하다"}, {w:"stop", t:"멈추다"},
+        {w:"quit", t:"그만두다"}, {w:"suggest", t:"제안하다"}, {w:"cease", t:"멈추다"},
+        {w:"take up", t:"(일·취미 등을) 취하다, 시작하다"}, {w:"find", t:"발견하다, 알게 되다"}, {w:"overcome", t:"극복하다"},
+        {w:"favor", t:"선호하다, 지지하다"}, {w:"beat", t:"이기다"}, {w:"conduct", t:"수행하다"},
+        {w:"recall", t:"기억해내다"}, {w:"defer", t:"유보하다, 미루다"}, {w:"experience", t:"경험하다"},
+        {w:"advocate", t:"옹호하다"}, {w:"entail", t:"수반하다"}, {w:"allow", t:"허용하다"},
+        {w:"promote", t:"촉진하다, 홍보하다"}, {w:"encourage", t:"장려하다"}, {w:"discourage", t:"낙담시키다, 말리다"},
+        {w:"resent", t:"분하게 여기다"}, {w:"admit", t:"인정하다"}, {w:"delay", t:"미루다, 연기하다"},
+        {w:"prevent", t:"예방하다, 막다"}, {w:"give up", t:"포기하다"}, {w:"perform", t:"수행하다"},
+        {w:"adore", t:"아주 좋아하다"}, {w:"permit", t:"허가하다"}, {w:"discuss", t:"토론하다"},
+        {w:"mention", t:"언급하다"}, {w:"report", t:"보고하다"}, {w:"depict", t:"묘사하다"},
+        {w:"fear", t:"두려워하다"}, {w:"disclose", t:"폭로하다"}, {w:"finish", t:"끝내다"},
+        {w:"deny", t:"부인하다"}, {w:"approve", t:"승인하다"}, {w:"require", t:"요구하다"},
+        {w:"advise", t:"조언하다"}, {w:"regard", t:"간주하다, 여기다"}, {w:"contemplate", t:"숙고하다"},
+        {w:"acknowledge", t:"인정하다"}, {w:"support", t:"지지하다"}, {w:"discontinue", t:"중단하다"},
+        {w:"limit", t:"제한하다"}
+    ],
+    infinitive: [
+        {w:"appear", t:"~인 것처럼 보이다"}, {w:"allow", t:"허용하다"}, {w:"agree", t:"동의하다"},
+        {w:"attempt", t:"시도하다"}, {w:"cause", t:"야기하다"}, {w:"decide", t:"결정하다"},
+        {w:"demand", t:"요구하다"}, {w:"expect", t:"기대하다, 예상하다"}, {w:"hope", t:"희망하다"},
+        {w:"incline", t:"~한 경향이 생기게 하다"}, 
+        {w:"intend", t:"[원문 오기: 계획이다] → ~할 계획이다, 의도하다"},
+        {w:"make sure", t:"반드시 ~하다, 확인하다"},
+        {w:"opt", t:"선택하다"}, {w:"offer", t:"제안하다"}, {w:"project", t:"예상하다, 계획하다"},
+        {w:"plan", t:"계획하다"}, {w:"prepare", t:"준비하다"}, {w:"promise", t:"약속하다"},
+        {w:"pretend", t:"[원문 오기: 인 척하다] → ~인 척하다"}, 
+        {w:"require", t:"요구하다"}, {w:"remind", t:"상기시키다"},
+        {w:"stand", t:"[원문 오기: 할 모양이다] → ~할 모양이다, 서 있다"}, 
+        {w:"tend", t:"[원문 오기: 경향이 있다] → ~하는 경향이 있다"}, 
+        {w:"hesitate", t:"주저하다"}, {w:"vow", t:"맹세하다"}
+    ],
+    conjunction: [
+        {w:"no matter how", t:"아무리 ~해도"}, {w:"unless", t:"만약 ~이 아니라면"}, {w:"once", t:"일단 ~하면"},
+        {w:"whenever", t:"[원문 오타: 할때마다] → ~할 때마다"}, 
+        {w:"so that", t:"[원문 뜻오류: 야기하다] → ~하기 위해서, 그 결과 ~하다"}, 
+        {w:"as if", t:"마치 ~인 것처럼"}, {w:"now that", t:"이제 ~이기 때문에"}, {w:"even if", t:"비록 ~하더라도"}, 
+        {w:"given that", t:"~을 고려하면"},
+        {w:"as long as", t:"[원문 뜻오류: 경향이 생기게 하다] → ~하는 한"}, 
+        {w:"as far as", t:"[원문 뜻오류: 계획이다] → ~하는 한"}, 
+        {w:"supposing that", t:"[원문 오타: 만약~이 라면] → 만약 ~라면"}
+    ],
+    conj_adverb: [
+        {w:"otherwise", t:"그렇지 않으면"}, {w:"namely", t:"다시 말해, 즉"}, {w:"after all", t:"결국, 어쨌든"},
+        {w:"nevertheless", t:"그럼에도 불구하고"}, {w:"nonetheless", t:"그럼에도 불구하고"}, {w:"meanwhile", t:"그동안에, 한편"},
+        {w:"more often than not", t:"자주, 대개"}, {w:"as a matter of fact", t:"사실상, 사실은"}, {w:"even so", t:"그렇다 하더라도"},
+        {w:"afterward", t:"나중에, 그 후에"}, {w:"in the first place", t:"우선, 첫째로"}, 
+        {w:"in the meantime", t:"한편, 그동안에"}, {w:"at last", t:"마침내"}, {w:"altogether", t:"대체로, 전적으로"}, 
+        {w:"all in all", t:"결과적으로, 대체로 보아"}, {w:"hence", t:"따라서, 그러므로"}, {w:"likewise", t:"비슷하게, 마찬가지로"}
+    ],
+    preposition: [
+        {w:"aside from", t:"~이외에, ~을 제외하고"}, {w:"rather than", t:"~보다는"}, {w:"owing to", t:"~ 때문에"}
+    ]
+};
+
+let masterPool = [];
+
+// 실행 시 마스터 풀 구성
+function buildMasterPool() {
+    masterPool = [];
+    Object.keys(wordDatabase).forEach(function(type) {
+        wordDatabase[type].forEach(function(item) {
+            masterPool.push({
+                word: item.w,
+                meaning: item.t,
+                type: type
+            });
+        });
+    });
+}
+
+// 안전한 셔플 알고리즘
+function shuffle(array) {
+    let m = array.length, t, i;
+    while (m) {
+        i = Math.floor(Math.random() * m--);
+        t = array[m];
+        array[m] = array[i];
+        array[i] = t;
+    }
+    return array;
+}
+
+let activeQuestions = [];
+
+// 시험 시작 버튼 이벤트 핸들러
+function initQuiz() {
+    buildMasterPool();
+    shuffle(masterPool);
+    
+    const selectCount = document.getElementById('quizCount').value;
+    let limit = selectCount === 'all' ? masterPool.length : parseInt(selectCount);
+    
+    activeQuestions = masterPool.slice(0, limit);
+    renderQuiz();
+    
+    document.getElementById('submitBtn').style.display = 'inline-block';
+    document.getElementById('scoreDisplay').style.display = 'none';
+}
+
+// [무한 루프 원인 차단 및 수정 완료] 오답 추출 함수
+function getWrongOptions(correctAnswer, count) {
+    // 마스터 풀에서 정답과 일치하지 않는 것들만 필터링
+    let filtered = masterPool.filter(function(item) { 
+        return item.meaning !== correctAnswer && item.meaning.trim() !== ""; 
+    });
+    
+    shuffle(filtered);
+    
+    let results = [];
+    let checkedWords = new Set();
+    
+    // 무한루프(while) 대신, 유한한 length를 순회하는 안전한 for 루프로 변경
+    for(let i = 0; i < filtered.length; i++) {
+        let candidate = filtered[i].meaning;
+        if (!checkedWords.has(candidate)) {
+            results.push(candidate);
+            checkedWords.add(candidate);
+        }
+        if (results.length === count) break;
+    }
+    
+    // 혹시라도 데이터 부족으로 3개가 안 채워졌을 경우를 대비한 Fallback 처리
+    while(results.length < count) {
+        results.push("기타 문맥에 맞는 품사 문항 " + (results.length + 1));
+    }
+    return results;
+}
+
+// 화면 퀴즈 카드 랜더링
+function renderQuiz() {
+    const container = document.getElementById('quizContainer');
+    container.innerHTML = '';
+
+    activeQuestions.forEach((item, index) => {
+        const qNum = index + 1;
+        // 동사 계열일 때만 50%의 확률로 문법적 성격을 묻는 문제 출제
+        const isGrammarType = (item.type === 'gerund' || item.type === 'infinitive') && Math.random() > 0.5;
+        
+        let questionText = "";
+        let correctAnswer = "";
+        let options = [];
+
+        if (isGrammarType) {
+            questionText = `다음 단어 [ ${item.word} ]가 뒤에 목적어를 가질 때 취하는 올바른 형태는 무엇입니까?`;
+            correctAnswer = item.type === 'gerund' ? "동명사(V-ing)를 목적어로 취함" : "To부정사(to-V)를 목적어로 취함";
+            options = ["동명사(V-ing)를 목적어로 취함", "To부정사(to-V)를 목적어로 취함", "원형 부정사 형태를 목적어로 취함", "목적어를 취할 수 없는 1형식 자동사임"];
+            if(item.type === 'infinitive') {
+                options = [options[1], options[0], options[2], options[3]];
+            }
+        } else {
+            questionText = `다음 어휘 및 표현 [ ${item.word} ]의 가장 적절한 한국어 뜻을 고르시오.`;
+            correctAnswer = item.meaning;
+            
+            // 무한루프 방지 패치된 함수 호출
+            const wrongs = getWrongOptions(correctAnswer, 3);
+            options = [correctAnswer, wrongs[0], wrongs[1], wrongs[2]];
+            shuffle(options);
+        }
+
+        const card = document.createElement('div');
+        card.className = 'question-card';
+        card.setAttribute('data-correct', correctAnswer);
+        
+        const typeBadge = document.createElement('span');
+        typeBadge.className = `question-type ${isGrammarType ? 'type-grammar' : 'type-meaning'}`;
+        typeBadge.innerText = isGrammarType ? '💡 문법 구조 특징' : '📖 단어 뜻 학습';
+        
+        const qTextDiv = document.createElement('div');
+        qTextDiv.className = 'question-text';
+        qTextDiv.innerText = `${qNum}. ${questionText}`;
+        
+        card.appendChild(typeBadge);
+        card.appendChild(qTextDiv);
+
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'options';
+
+        options.forEach(opt => {
+            const label = document.createElement('label');
+            label.className = 'option-label';
+            
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = `q${qNum}`;
+            radio.value = opt;
+            
+            label.appendChild(radio);
+            label.appendChild(document.createTextNode(` ${opt}`));
+            optionsDiv.appendChild(label);
+        });
+
+        card.appendChild(optionsDiv);
+
+        const resultBox = document.createElement('div');
+        resultBox.className = 'result-box';
+        card.appendChild(resultBox);
+
+        container.appendChild(card);
+    });
+    
+    container.scrollIntoView({ behavior: 'smooth' });
+}
+
+// 정답 확인 및 점수 계산
+function submitQuiz() {
+    const cards = document.querySelectorAll('.question-card');
+    let score = 0;
+    let total = cards.length;
+    let unanswered = 0;
+
+    cards.forEach((card, index) => {
+        const correctAnswer = card.getAttribute('data-correct');
+        const qNum = index + 1;
+        const selectedOpt = card.querySelector(`input[name="q${qNum}"]:checked`);
+        const resultBox = card.querySelector('.result-box');
+        
+        resultBox.style.display = 'block';
+
+        if (selectedOpt) {
+            const userVal = selectedOpt.value;
+            if (userVal === correctAnswer) {
+                score++;
+                resultBox.className = 'result-box correct';
+                resultBox.innerHTML = `🎯 정답입니다!`;
+            } else {
+                resultBox.className = 'result-box incorrect';
+                resultBox.innerHTML = `❌ 틀렸습니다.<br><strong>[정답]</strong> ${correctAnswer}`;
+            }
+        } else {
+            unanswered++;
+            resultBox.className = 'result-box incorrect';
+            resultBox.innerHTML = `⚠️ 선택하지 않은 문항입니다.<br><strong>[정답]</strong> ${correctAnswer}`;
+        }
+    });
+
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    scoreDisplay.style.display = 'block';
+    const percent = Math.round((score / total) * 100);
+    scoreDisplay.innerHTML = `💯 채점이 완료되었습니다!<br>맞춘 개수: ${score} / ${total} (미풀이: ${unanswered}문항)<br><strong>최종 성적: ${percent}점</strong>`;
+    scoreDisplay.scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>
